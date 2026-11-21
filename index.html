@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f2a22" />
+    <meta name="description" content="A private, shared financial dashboard for Benson Majawa." />
+    <title>Benson Majawa's Financial Details</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="supabase-config.js"></script>
+  </head>
+  <body>
+    <main class="gate-shell" id="auth-screen">
+      <section class="gate-card" aria-labelledby="auth-title">
+        <div class="brand-mark" aria-hidden="true">BM</div>
+        <p class="eyebrow">Private ledger</p>
+        <h1 id="auth-title">Welcome back</h1>
+        <p class="gate-description">Sign in with an invited account to open the shared financial dashboard.</p>
+        <form id="auth-form">
+          <label class="field">
+            <span>Email</span>
+            <input id="auth-email" type="email" autocomplete="username" required />
+          </label>
+          <label class="field" id="auth-password-field">
+            <span>Password</span>
+            <input id="auth-password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="button button-primary full-width" id="auth-submit" type="submit">Sign in</button>
+          <button class="text-button" id="reset-password" type="button">Forgot password?</button>
+          <p class="status-message" id="auth-message" role="status" aria-live="polite"></p>
+        </form>
+        <p class="gate-footnote">Access is limited to email accounts invited by the ledger owner.</p>
+      </section>
+    </main>
+
+    <main class="gate-shell" id="lock-screen" hidden>
+      <section class="gate-card" aria-labelledby="lock-title">
+        <div class="brand-mark" aria-hidden="true">BM</div>
+        <p class="eyebrow">Encrypted shared ledger</p>
+        <h1 id="lock-title">Unlock your dashboard</h1>
+        <p class="gate-description" id="lock-description">
+          Enter the shared passphrase. It encrypts the financial data before it is sent to the database.
+        </p>
+        <form id="unlock-form">
+          <label class="field">
+            <span>Shared passphrase</span>
+            <input id="passphrase" type="password" autocomplete="current-password" minlength="10" required />
+          </label>
+          <label class="field" id="confirm-field" hidden>
+            <span>Confirm passphrase</span>
+            <input id="passphrase-confirm" type="password" autocomplete="new-password" minlength="10" />
+          </label>
+          <button class="button button-primary full-width" id="unlock-button" type="submit">Unlock dashboard</button>
+          <p class="status-message" id="lock-message" role="status" aria-live="polite"></p>
+        </form>
+        <p class="gate-footnote">Keep the passphrase private and backed up. It cannot be reset if forgotten.</p>
+      </section>
+    </main>
+
+    <main class="app-shell" id="ledger-app" hidden>
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Benson Majawa's ledger home">
+          <span class="brand-mark" aria-hidden="true">BM</span>
+          <span class="brand-copy">
+            <span class="brand-kicker">Private ledger</span>
+            <span class="brand-name">Benson Majawa's Financial Details</span>
+          </span>
+        </a>
+        <div class="top-actions">
+          <label class="currency-control" for="currency">
+            <span>Currency</span>
+            <select id="currency" aria-label="Display currency">
+              <option value="USD">USD $</option>
+              <option value="ZWG">ZWG</option>
+              <option value="ZAR">ZAR R</option>
+            </select>
+          </label>
+          <button class="button button-outline" id="backup-button" type="button">Encrypted backup</button>
+          <button class="button button-outline" id="restore-button" type="button">Restore backup</button>
+          <button class="button button-outline" id="logout-button" type="button">Sign out</button>
+          <input id="restore-file" type="file" accept=".json,application/json" hidden />
+        </div>
+      </header>
+
+      <section class="hero" aria-labelledby="app-title">
+        <div class="hero-copy">
+          <p class="greeting" id="greeting">Good to see you.</p>
+          <h1 id="app-title">Where every dollar went <em id="period-title"></em></h1>
+        </div>
+        <label class="month-picker">
+          <span class="sr-only">Dashboard month</span>
+          <select id="month-filter" aria-label="Dashboard month"></select>
+        </label>
+      </section>
+
+      <section class="summary-grid" aria-label="Financial summary">
+        <article class="summary-card">
+          <div class="summary-top"><span>Money in</span><span class="summary-icon icon-income" aria-hidden="true">↙</span></div>
+          <p class="summary-value" id="income-total">$0.00</p>
+          <p class="summary-detail" id="income-count">0 entries</p>
+        </article>
+        <article class="summary-card">
+          <div class="summary-top"><span>Money out</span><span class="summary-icon icon-expense" aria-hidden="true">↗</span></div>
+          <p class="summary-value" id="expense-total">$0.00</p>
+          <p class="summary-detail" id="expense-count">0 entries</p>
+        </article>
+        <article class="summary-card">
+          <div class="summary-top"><span>Left over</span><span class="summary-icon icon-balance" aria-hidden="true">⚖</span></div>
+          <p class="summary-value" id="balance-total">$0.00</p>
+          <p class="summary-detail">In minus out</p>
+        </article>
+        <article class="summary-card clickable-card" id="loans-summary" role="button" tabindex="0" aria-label="See who owes you">
+          <div class="summary-top"><span>People owe me</span><span class="summary-icon icon-loan" aria-hidden="true">♧</span></div>
+          <p class="summary-value" id="loans-total">$0.00</p>
+          <p class="summary-detail"><span id="loans-count">0 people</span><span class="card-link">See who ›</span></p>
+        </article>
+        <article class="summary-card clickable-card" id="savings-summary" role="button" tabindex="0" aria-label="See your savings">
+          <div class="summary-top"><span>Total savings</span><span class="summary-icon icon-savings" aria-hidden="true">▱</span></div>
+          <p class="summary-value" id="savings-total">$0.00</p>
+          <p class="summary-detail"><span id="savings-count">0 places</span><span class="card-link">Breakdown ›</span></p>
+        </article>
+      </section>
+
+      <nav class="tabs" aria-label="Dashboard sections">
+        <button class="tab active" type="button" data-view="overview" aria-current="page"><span aria-hidden="true">▦</span>Overview</button>
+        <button class="tab" type="button" data-view="income"><span aria-hidden="true">↙</span>Money in</button>
+        <button class="tab" type="button" data-view="costs"><span aria-hidden="true">▤</span>Costs</button>
+        <button class="tab" type="button" data-view="loans"><span aria-hidden="true">♧</span>Loans</button>
+        <button class="tab" type="button" data-view="savings"><span aria-hidden="true">▱</span>Savings</button>
+      </nav>
+
+      <section class="view active" id="view-overview" aria-label="Overview">
+        <div class="overview-grid">
+          <section class="panel breakdown-panel">
+            <div class="panel-heading">
+              <div><h2>Where your money went</h2><p>Spending by category</p></div>
+              <button class="text-button" type="button" data-open-view="costs">All costs →</button>
+            </div>
+            <div id="expense-breakdown" class="breakdown-list"></div>
+            <div class="panel-heading income-heading">
+              <div><h2>Where the money came from</h2><p>Income by source</p></div>
+              <button class="text-button" type="button" data-open-view="income">All income →</button>
+            </div>
+            <div id="income-breakdown" class="breakdown-list"></div>
+          </section>
+          <section class="panel latest-panel">
+            <div class="panel-heading">
+              <div><h2>Latest entries</h2><p>Recent money in and costs</p></div>
+              <button class="text-button" type="button" data-open-view="income">See all →</button>
+            </div>
+            <div id="latest-entries" class="latest-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-income" aria-label="Money in">
+        <section class="panel page-panel">
+          <div class="section-toolbar">
+            <div class="panel-heading"><div><h2>Money in</h2><p>Record and review income</p></div></div>
+            <button class="button button-primary" type="button" data-add-type="income">+ Money in</button>
+          </div>
+          <div id="income-list" class="entry-list"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-costs" aria-label="Costs">
+        <section class="panel page-panel">
+          <div class="section-toolbar">
+            <div class="panel-heading"><div><h2>Costs</h2><p>Track spending by category</p></div></div>
+            <button class="button button-danger" type="button" data-add-type="expense">− Add cost</button>
+          </div>
+          <div id="costs-list" class="entry-list"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-loans" aria-label="Loans">
+        <section class="panel page-panel">
+          <div class="section-toolbar">
+            <div class="panel-heading"><div><h2>Who owes me</h2><p id="loan-summary-copy">Outstanding loans and repayments</p></div></div>
+            <button class="button button-primary" id="add-loan" type="button">+ Add loan</button>
+          </div>
+          <div id="loan-list" class="loan-list"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-savings" aria-label="Savings">
+        <section class="panel page-panel">
+          <div class="section-toolbar">
+            <div class="panel-heading"><div><h2>Savings places</h2><p>Track balances and goals</p></div></div>
+            <button class="button button-primary" id="add-savings" type="button">+ Add savings place</button>
+          </div>
+          <div id="savings-list" class="savings-list"></div>
+        </section>
+      </section>
+
+      <div class="mobile-actions" aria-label="Add a financial entry">
+        <button class="button button-primary" type="button" data-add-type="income">+ Money in</button>
+        <button class="button button-danger" type="button" data-add-type="expense">− Cost</button>
+      </div>
+
+      <footer class="footer">
+        <span id="sync-status" role="status" aria-live="polite">Connecting to your shared ledger…</span>
+        <div class="footer-actions">
+          <button class="text-button" id="reload-button" type="button" hidden>Reload shared updates</button>
+          <button class="text-button" id="csv-button" type="button">Export transactions CSV</button>
+        </div>
+      </footer>
+    </main>
+
+    <dialog class="form-dialog" id="transaction-dialog">
+      <form id="transaction-form" method="dialog">
+        <div class="dialog-heading"><div><p class="eyebrow">Ledger entry</p><h2 id="transaction-title">Add money in</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <input id="transaction-id" type="hidden" />
+        <input id="transaction-type" type="hidden" value="income" />
+        <label class="field"><span>Description</span><input id="description" maxlength="100" required placeholder="e.g. Salary" /></label>
+        <div class="form-row">
+          <label class="field"><span>Amount</span><input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0.00" /></label>
+          <label class="field"><span>Date</span><input id="date" type="date" required /></label>
+        </div>
+        <label class="field"><span>Category</span><select id="category" required></select></label>
+        <label class="field"><span>Note <span class="optional">(optional)</span></span><input id="note" maxlength="180" placeholder="Add a note" /></label>
+        <div class="form-actions"><button class="button button-primary" id="save-transaction" type="submit">Save entry</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
+        <p class="status-message" id="transaction-message" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="form-dialog" id="loan-dialog">
+      <form id="loan-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Money lent out</p><h2 id="loan-form-title">Add a loan</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <input id="loan-id" type="hidden" />
+        <label class="field"><span>Person's name</span><input id="borrower-name" maxlength="100" required /></label>
+        <label class="field"><span>Phone number <span class="optional">(optional)</span></span><input id="borrower-phone" type="tel" maxlength="30" /></label>
+        <div class="form-row">
+          <label class="field"><span>Amount lent</span><input id="loan-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+          <label class="field"><span>Date lent</span><input id="loan-date" type="date" required /></label>
+        </div>
+        <label class="field"><span>Due date <span class="optional">(optional)</span></span><input id="loan-due" type="date" /></label>
+        <label class="field"><span>Note <span class="optional">(optional)</span></span><input id="loan-note" maxlength="180" placeholder="e.g. No interest" /></label>
+        <div class="form-actions"><button class="button button-primary" type="submit">Save loan</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
+        <p class="status-message" id="loan-message" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="form-dialog" id="repayment-dialog">
+      <form id="repayment-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Loan repayment</p><h2>Record money paid back</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <input id="repayment-loan-id" type="hidden" />
+        <p class="dialog-description" id="repayment-description"></p>
+        <div class="form-row">
+          <label class="field"><span>Amount paid</span><input id="repayment-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+          <label class="field"><span>Date paid</span><input id="repayment-date" type="date" required /></label>
+        </div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Record repayment</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
+        <p class="status-message" id="repayment-message" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="form-dialog" id="savings-dialog">
+      <form id="savings-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Savings goal</p><h2 id="savings-form-title">Add a savings place</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <input id="savings-id" type="hidden" />
+        <label class="field"><span>Name</span><input id="savings-name" maxlength="80" required placeholder="e.g. Emergency fund" /></label>
+        <div class="form-row">
+          <label class="field"><span>Current balance</span><input id="savings-balance" type="number" min="0" step="0.01" inputmode="decimal" required /></label>
+          <label class="field"><span>Goal <span class="optional">(optional)</span></span><input id="savings-goal" type="number" min="0" step="0.01" inputmode="decimal" /></label>
+        </div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Save savings place</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
+        <p class="status-message" id="savings-message" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="form-dialog" id="savings-action-dialog">
+      <form id="savings-action-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Savings movement</p><h2 id="savings-action-title">Add money</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <input id="savings-action-id" type="hidden" />
+        <input id="savings-action-type" type="hidden" />
+        <p class="dialog-description" id="savings-action-description"></p>
+        <label class="field"><span>Amount</span><input id="savings-action-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+        <div class="form-actions"><button class="button button-primary" type="submit" id="savings-action-submit">Save</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
+        <p class="status-message" id="savings-action-message" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="form-dialog" id="restore-dialog">
+      <form id="restore-form">
+        <div class="dialog-heading"><div><p class="eyebrow">Encrypted backup</p><h2>Restore your ledger</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <p class="dialog-description">Enter the passphrase that encrypted this backup. The restored data will be re-encrypted with the current shared passphrase before syncing.</p>
+        <label class="field"><span>Backup passphrase</span><input id="restore-passphrase" type="password" autocomplete="current-password" minlength="10" required /></label>
+        <p class="status-message" id="restore-message" role="status" aria-live="polite"></p>
+        <div class="form-actions"><button class="button button-primary" type="submit">Decrypt and restore</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
+      </form>
+    </dialog>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
