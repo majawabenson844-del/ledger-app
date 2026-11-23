@@ -140,3 +140,48 @@ create policy "Users can read their ledger role"
 -- values ('USER_UUID', 'no_loans')
 -- on conflict (user_id) do update set role = excluded.role;
 -- Owner users can be added the same way with role 'owner'.
+
+create or replace function public.ledger_member_directory()
+returns table(user_id uuid, email text, role text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if coalesce(public.current_ledger_role(), '') <> 'owner' then
+    raise exception 'Owner access is required.' using errcode = '42501';
+  end if;
+
+  return query
+  select u.id as user_id, u.email::text, coalesce(m.role, 'owner') as role
+  from auth.users u
+  left join public.ledger_members m on m.user_id = u.id
+  order by u.email;
+end;
+$$;
+
+create or replace function public.set_ledger_member_role(p_user_id uuid, p_role text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if coalesce(public.current_ledger_role(), '') <> 'owner' then
+    raise exception 'Owner access is required.' using errcode = '42501';
+  end if;
+
+  if p_role not in ('owner', 'no_loans') then
+    raise exception 'Invalid ledger role.' using errcode = '22023';
+  end if;
+
+  insert into public.ledger_members (user_id, role)
+  values (p_user_id, p_role)
+  on conflict (user_id) do update set role = excluded.role;
+end;
+$$;
+
+revoke all on function public.ledger_member_directory() from public, anon;
+revoke all on function public.set_ledger_member_role(uuid, text) from public, anon;
+grant execute on function public.ledger_member_directory() to authenticated;
+grant execute on function public.set_ledger_member_role(uuid, text) to authenticated;

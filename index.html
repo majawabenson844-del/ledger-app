@@ -76,6 +76,7 @@
               <option value="ZAR">ZAR R</option>
             </select>
           </label>
+          <button class="button button-outline" id="members-button" type="button" hidden>Members</button>
           <button class="button button-outline" id="backup-button" type="button">Encrypted backup</button>
           <button class="button button-outline" id="restore-button" type="button">Restore backup</button>
           <button class="button button-outline" id="logout-button" type="button">Sign out</button>
@@ -279,6 +280,16 @@
         <label class="field"><span>Amount</span><input id="savings-action-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
         <div class="form-actions"><button class="button button-primary" type="submit" id="savings-action-submit">Save</button><button class="button button-quiet" type="button" data-close-dialog>Cancel</button></div>
         <p class="status-message" id="savings-action-message" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="form-dialog" id="members-dialog">
+      <form id="members-form" onsubmit="return false">
+        <div class="dialog-heading"><div><p class="eyebrow">Access levels</p><h2>Ledger members</h2></div><button class="icon-close" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <p class="dialog-description">Owner users can see and edit everything. No Loans users can edit the ledger but cannot see or open Loans.</p>
+        <div id="members-list" class="entry-list"></div>
+        <p class="status-message" id="members-message" role="status" aria-live="polite"></p>
+        <div class="form-actions"><button class="button button-primary" type="button" data-close-dialog>Done</button></div>
       </form>
     </dialog>
 

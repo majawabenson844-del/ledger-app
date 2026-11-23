@@ -583,6 +583,7 @@ async function showPassphraseGate() {
 
 function applyLedgerAccessRole() {
   const hideLoans = ledgerAccessRole === "no_loans";
+  document.querySelector("#members-button")?.toggleAttribute("hidden", ledgerAccessRole !== "owner");
   document.querySelector("#loans-summary")?.toggleAttribute("hidden", hideLoans);
   document.querySelector('[data-view="loans"]')?.toggleAttribute("hidden", hideLoans);
   document.querySelector("#view-loans")?.toggleAttribute("hidden", hideLoans);
@@ -1133,6 +1134,58 @@ currencyInput.addEventListener("change", async () => {
     setSyncStatus("Currency change not synced. Reload the latest shared ledger before continuing.", true);
   }
 });
+
+const membersButton = document.querySelector("#members-button");
+const membersDialog = document.querySelector("#members-dialog");
+const membersList = document.querySelector("#members-list");
+const membersMessage = document.querySelector("#members-message");
+
+async function openMembersDialog() {
+  membersDialog.showModal();
+  setMessage(membersMessage, "Loading invited users…");
+  try {
+    const { data, error } = await client.rpc("ledger_member_directory");
+    if (error) throw error;
+    membersList.innerHTML = "";
+    for (const member of data || []) {
+      const row = document.createElement("div");
+      row.className = "entry-row";
+      row.innerHTML = `
+        <div class="entry-main"><strong></strong><span></span></div>
+        <select class="member-role" aria-label="Access level">
+          <option value="owner">Owner - full access</option>
+          <option value="no_loans">No Loans - can edit everything else</option>
+        </select>`;
+      row.querySelector("strong").textContent = member.email || "Unknown email";
+      row.querySelector("span").textContent = member.user_id;
+      const roleSelect = row.querySelector("select");
+      roleSelect.value = member.role || "owner";
+      roleSelect.addEventListener("change", async () => {
+        roleSelect.disabled = true;
+        setMessage(membersMessage, "Saving access level…");
+        try {
+          const { error: roleError } = await client.rpc("set_ledger_member_role", {
+            p_user_id: member.user_id,
+            p_role: roleSelect.value
+          });
+          if (roleError) throw roleError;
+          setMessage(membersMessage, "Access level updated.", true);
+        } catch (roleUpdateError) {
+          roleSelect.value = member.role || "owner";
+          setMessage(membersMessage, roleUpdateError.message || "Could not update access level.");
+        } finally {
+          roleSelect.disabled = false;
+        }
+      });
+      membersList.appendChild(row);
+    }
+    setMessage(membersMessage, "Choose the access level for each invited user.", true);
+  } catch (error) {
+    setMessage(membersMessage, error.message || "Could not load members.");
+  }
+}
+
+membersButton?.addEventListener("click", openMembersDialog);
 
 document.querySelector("#logout-button").addEventListener("click", async () => {
   setSyncStatus("Signing out…");
