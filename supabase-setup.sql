@@ -129,6 +129,7 @@ grant execute on function public.current_ledger_role() to authenticated;
 
 drop policy if exists "Users can read their ledger role" on public.ledger_members;
 create policy "Users can read their ledger role"
+  on public.ledger_members
   for select
   to authenticated
   using (user_id = (select auth.uid()));
