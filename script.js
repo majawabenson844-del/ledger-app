@@ -48,6 +48,7 @@ const restoreMessage = document.querySelector("#restore-message");
 
 let client = null;
 let session = null;
+let ledgerAccessRole = "owner";
 let sharedRecord = null;
 let sharedKey = null;
 let sharedSalt = null;
@@ -580,6 +581,24 @@ async function showPassphraseGate() {
   setSyncStatus("Signed in. Ledger is encrypted.");
 }
 
+function applyLedgerAccessRole() {
+  const hideLoans = ledgerAccessRole === "no_loans";
+  document.querySelector("#loans-summary")?.toggleAttribute("hidden", hideLoans);
+  document.querySelector('[data-view="loans"]')?.toggleAttribute("hidden", hideLoans);
+  document.querySelector("#view-loans")?.toggleAttribute("hidden", hideLoans);
+}
+
+async function loadLedgerAccessRole() {
+  ledgerAccessRole = "owner";
+  const { data, error } = await client
+    .from("ledger_members")
+    .select("role")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  if (!error && data?.role) ledgerAccessRole = data.role;
+  applyLedgerAccessRole();
+}
+
 async function activateSession(nextSession) {
   if (!nextSession?.user) return;
   if (activationPromise) return activationPromise;
@@ -588,6 +607,7 @@ async function activateSession(nextSession) {
   authScreen.hidden = true;
   activationPromise = (async () => {
     try {
+      await loadLedgerAccessRole();
       await showPassphraseGate();
       document.querySelector("#greeting").textContent = `Good to see you, ${nextSession.user.email?.split("@")[0] || "there"}.`;
     } catch (error) {

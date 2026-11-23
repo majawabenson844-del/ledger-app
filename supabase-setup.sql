@@ -101,3 +101,41 @@ begin
   end if;
 end
 $$;
+
+create table if not exists public.ledger_members (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('owner', 'no_loans')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.ledger_members enable row level security;
+
+create or replace function public.current_ledger_role()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select role
+  from public.ledger_members
+  where user_id = auth.uid()
+  limit 1;
+$$;
+
+revoke all on table public.ledger_members from anon, authenticated;
+grant select on table public.ledger_members to authenticated;
+grant execute on function public.current_ledger_role() to authenticated;
+
+drop policy if exists "Users can read their ledger role" on public.ledger_members;
+create policy "Users can read their ledger role"
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
+-- Existing users need no-loans access only if you insert a row below.
+-- Replace the UUID with the Supabase Authentication user ID:
+-- insert into public.ledger_members (user_id, role)
+-- values ('USER_UUID', 'no_loans')
+-- on conflict (user_id) do update set role = excluded.role;
+-- Owner users can be added the same way with role 'owner'.
